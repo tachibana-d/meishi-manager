@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const mimeType = image.slice(5, semiIdx); // "data:" の後
     const data = image.slice(semiIdx + 8).replace(/\s/g, ""); // ";base64," の後、空白除去
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     const result = await model.generateContent([
       { inlineData: { data, mimeType } },
