@@ -222,7 +222,7 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">画像を編集</h3>
-          <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
+          <button type="button" onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -250,11 +250,11 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
           <div className="flex flex-wrap gap-3 items-center">
             <span className="text-sm font-medium text-slate-600 shrink-0">回転</span>
             <div className="flex gap-2">
-              <button onClick={() => setRotation(r => (r - 90 + 360) % 360)}
+              <button type="button" onClick={() => setRotation(r => (r - 90 + 360) % 360)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors">
                 <RotateCcw size={14} /> 左90°
               </button>
-              <button onClick={() => setRotation(r => (r + 90) % 360)}
+              <button type="button" onClick={() => setRotation(r => (r + 90) % 360)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors">
                 <RotateCw size={14} /> 右90°
               </button>
@@ -263,16 +263,16 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
 
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm font-medium text-slate-600 shrink-0">比率</span>
-            <button onClick={() => setPreset(1.75)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">名刺 (1.75:1)</button>
-            <button onClick={() => setPreset(1)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">正方形</button>
-            <button onClick={() => setPreset(null)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">全体</button>
+            <button type="button" onClick={() => setPreset(1.75)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">名刺 (1.75:1)</button>
+            <button type="button" onClick={() => setPreset(1)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">正方形</button>
+            <button type="button" onClick={() => setPreset(null)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">全体</button>
           </div>
 
           <div className="flex gap-3 pt-1">
-            <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
               キャンセル
             </button>
-            <button onClick={confirm} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+            <button type="button" onClick={confirm} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
               確定
             </button>
           </div>

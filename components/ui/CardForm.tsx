@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Sparkles, Loader2 } from "lucide-react";
 import type { BusinessCard, BusinessCardInput } from "@/lib/types";
 import { saveCard, updateCard, getAllTags } from "@/lib/storage";
 import TagInput from "./TagInput";
@@ -72,11 +73,46 @@ export default function CardForm({ initialData }: CardFormProps) {
       : emptyForm
   );
   const [errors, setErrors] = useState<Partial<Record<keyof BusinessCardInput, string>>>({});
+  const [ocring, setOcring] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const allTags = getAllTags();
 
   function set<K extends keyof BusinessCardInput>(key: K, value: BusinessCardInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
+  }
+
+  async function runOcr() {
+    if (!form.cardImage) return;
+    setOcring(true);
+    setOcrError(null);
+    try {
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: form.cardImage }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "エラーが発生しました");
+      const d = json.data;
+      setForm((prev) => ({
+        ...prev,
+        name: d.name ?? prev.name,
+        nameKana: d.nameKana ?? prev.nameKana,
+        company: d.company ?? prev.company,
+        department: d.department ?? prev.department,
+        title: d.title ?? prev.title,
+        email: d.email ?? prev.email,
+        phone: d.phone ?? prev.phone,
+        mobile: d.mobile ?? prev.mobile,
+        address: d.address ?? prev.address,
+        website: d.website ?? prev.website,
+      }));
+    } catch (e) {
+      setOcrError(e instanceof Error ? e.message : "読み取りに失敗しました");
+    } finally {
+      setOcring(false);
+    }
   }
 
   function validate(): boolean {
@@ -110,6 +146,23 @@ export default function CardForm({ initialData }: CardFormProps) {
           label="名刺のスキャン・写真"
           aspectRatio="card"
         />
+        {form.cardImage && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={runOcr}
+              disabled={ocring}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-60 transition-colors shadow-sm"
+            >
+              {ocring ? (
+                <><Loader2 size={16} className="animate-spin" /> AI読み取り中...</>
+              ) : (
+                <><Sparkles size={16} /> AIで名刺情報を自動入力</>
+              )}
+            </button>
+            {ocrError && <p className="text-red-500 text-xs text-center">{ocrError}</p>}
+          </div>
+        )}
       </section>
 
       {/* 基本情報 */}
