@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
 import type { BusinessCard, BusinessCardInput } from "@/lib/types";
 import { saveCard, updateCard, getAllTags } from "@/lib/storage";
+import { parseCardText } from "@/lib/parseCardText";
 import TagInput from "./TagInput";
 import PhotoUpload from "./PhotoUpload";
 
@@ -87,26 +88,23 @@ export default function CardForm({ initialData }: CardFormProps) {
     setOcring(true);
     setOcrError(null);
     try {
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: form.cardImage }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "エラーが発生しました");
-      const d = json.data;
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker(["jpn", "eng"]);
+      const { data: { text } } = await worker.recognize(form.cardImage);
+      await worker.terminate();
+      const parsed = parseCardText(text);
       setForm((prev) => ({
         ...prev,
-        name: d.name ?? prev.name,
-        nameKana: d.nameKana ?? prev.nameKana,
-        company: d.company ?? prev.company,
-        department: d.department ?? prev.department,
-        title: d.title ?? prev.title,
-        email: d.email ?? prev.email,
-        phone: d.phone ?? prev.phone,
-        mobile: d.mobile ?? prev.mobile,
-        address: d.address ?? prev.address,
-        website: d.website ?? prev.website,
+        name: parsed.name ?? prev.name,
+        nameKana: parsed.nameKana ?? prev.nameKana,
+        company: parsed.company ?? prev.company,
+        department: parsed.department ?? prev.department,
+        title: parsed.title ?? prev.title,
+        email: parsed.email ?? prev.email,
+        phone: parsed.phone ?? prev.phone,
+        mobile: parsed.mobile ?? prev.mobile,
+        address: parsed.address ?? prev.address,
+        website: parsed.website ?? prev.website,
       }));
     } catch (e) {
       setOcrError(e instanceof Error ? e.message : "読み取りに失敗しました");
