@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Plus, User, Building2, Phone, Mail, Tag, Grid, List, X } from "lucide-react";
 import type { BusinessCard } from "@/lib/types";
-import { getCards } from "@/lib/storage";
+import { getCloudCards } from "@/lib/cloudStorage";
 
 export default function CardList() {
   const [cards, setCards] = useState<BusinessCard[]>([]);
@@ -13,12 +13,15 @@ export default function CardList() {
   const [activeTag, setActiveTag] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
 
-  const load = useCallback(() => setCards(getCards()), []);
+  const load = useCallback(async () => {
+    try { setCards(await getCloudCards()); } catch { setCards([]); }
+  }, []);
 
   useEffect(() => {
-    load();
-    window.addEventListener("focus", load);
-    return () => window.removeEventListener("focus", load);
+    void load();
+    const refresh = () => { void load(); };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
   }, [load]);
 
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags))).sort();

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
 import type { BusinessCard, BusinessCardInput } from "@/lib/types";
-import { saveCard, updateCard, getAllTags } from "@/lib/storage";
+import { getAllTags } from "@/lib/storage";
+import { saveCloudCard, updateCloudCard } from "@/lib/cloudStorage";
 import { parseCardText } from "@/lib/parseCardText";
 import TagInput from "./TagInput";
 import PhotoUpload from "./PhotoUpload";
@@ -157,18 +158,17 @@ export default function CardForm({ initialData }: CardFormProps) {
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving || !validate()) return;
     setSaveError(null);
     setSaving(true);
     try {
       if (initialData) {
-        const updated = updateCard(initialData.id, form);
-        if (!updated) throw new Error("更新対象の名刺が見つかりません");
+        await updateCloudCard(initialData.id, form);
         router.push(`/cards/${initialData.id}`);
       } else {
-        const card = saveCard(form);
+        const card = await saveCloudCard(form);
         router.push(`/cards/${card.id}`);
       }
     } catch (error) {

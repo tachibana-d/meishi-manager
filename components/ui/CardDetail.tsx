@@ -9,7 +9,7 @@ import {
   MapPin, Building2, Tag, FileText, User, ExternalLink
 } from "lucide-react";
 import type { BusinessCard } from "@/lib/types";
-import { getCard, deleteCard } from "@/lib/storage";
+import { getCloudCard, deleteCloudCard } from "@/lib/cloudStorage";
 
 export default function CardDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function CardDetail({ id }: { id: string }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    setCard(getCard(id));
+    getCloudCard(id).then(setCard).catch(() => setCard(null));
   }, [id]);
 
   if (!card) {
@@ -29,8 +29,7 @@ export default function CardDetail({ id }: { id: string }) {
   }
 
   function handleDelete() {
-    deleteCard(id);
-    router.push("/");
+    deleteCloudCard(id).then(() => router.push("/")).catch(() => setShowDeleteConfirm(false));
   }
 
   const formatDate = (iso: string) =>

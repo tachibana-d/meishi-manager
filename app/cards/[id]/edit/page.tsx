@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getCard } from "@/lib/storage";
+import { getCloudCard } from "@/lib/cloudStorage";
 import type { BusinessCard } from "@/lib/types";
 import CardForm from "@/components/ui/CardForm";
 import { use } from "react";
@@ -13,7 +13,7 @@ export default function EditCardPage({ params }: { params: Promise<{ id: string 
   const [card, setCard] = useState<BusinessCard | null>(null);
 
   useEffect(() => {
-    setCard(getCard(id));
+    getCloudCard(id).then(setCard).catch(() => setCard(null));
   }, [id]);
 
   return (
