@@ -13,6 +13,55 @@ const CURSORS: Record<Handle, string> = {
   bl: "sw-resize", l: "w-resize", move: "move",
 };
 
+function detectCardCrop(canvas: HTMLCanvasElement): CropRect {
+  const width = canvas.width;
+  const height = canvas.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx || width < 20 || height < 20) return { ...DEFAULT_CROP };
+
+  const image = ctx.getImageData(0, 0, width, height).data;
+  const gray = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    return 0.299 * image[i] + 0.587 * image[i + 1] + 0.114 * image[i + 2];
+  };
+  const verticalScore = (x: number) => {
+    let score = 0;
+    for (let y = Math.round(height * 0.12); y < height * 0.88; y += 2) {
+      score += Math.abs(gray(x, y) - gray(Math.min(width - 1, x + 2), y));
+    }
+    return score;
+  };
+  const horizontalScore = (y: number) => {
+    let score = 0;
+    for (let x = Math.round(width * 0.12); x < width * 0.88; x += 2) {
+      score += Math.abs(gray(x, y) - gray(x, Math.min(height - 1, y + 2)));
+    }
+    return score;
+  };
+  const best = (from: number, to: number, score: (index: number) => number) => {
+    let index = from;
+    let max = -1;
+    for (let i = from; i <= to; i += 1) {
+      const value = score(i);
+      if (value > max) { max = value; index = i; }
+    }
+    return index;
+  };
+
+  const left = best(Math.round(width * 0.03), Math.round(width * 0.42), verticalScore);
+  const right = best(Math.round(width * 0.58), Math.round(width * 0.97), verticalScore);
+  const top = best(Math.round(height * 0.03), Math.round(height * 0.42), horizontalScore);
+  const bottom = best(Math.round(height * 0.58), Math.round(height * 0.97), horizontalScore);
+  const marginX = Math.max(2, Math.round(width * 0.008));
+  const marginY = Math.max(2, Math.round(height * 0.008));
+  const x = Math.max(0, left - marginX);
+  const y = Math.max(0, top - marginY);
+  const rightEdge = Math.min(width, right + marginX);
+  const bottomEdge = Math.min(height, bottom + marginY);
+  if (rightEdge - x < width * 0.25 || bottomEdge - y < height * 0.25) return { ...DEFAULT_CROP };
+  return { x: x / width, y: y / height, w: (rightEdge - x) / width, h: (bottomEdge - y) / height };
+}
+
 interface Props {
   src: string;
   onConfirm: (dataUrl: string) => void;
@@ -92,6 +141,7 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
       ctx.drawImage(img, -ic.width / 2, -ic.height / 2, ic.width, ic.height);
     }
     ctx.restore();
+    cropRef.current = detectCardCrop(ic);
     drawOverlay(cropRef.current);
   }, [drawOverlay]);
 
@@ -270,6 +320,7 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
 
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm font-medium text-slate-600 shrink-0">比率</span>
+            <span className="text-xs text-blue-600">名刺範囲を自動検出済み</span>
             <button type="button" onClick={() => setPreset(1.75)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">名刺 (1.75:1)</button>
             <button type="button" onClick={() => setPreset(1)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">正方形</button>
             <button type="button" onClick={() => setPreset(null)} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs hover:bg-slate-50 transition-colors">全体</button>

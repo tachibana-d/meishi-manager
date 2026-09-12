@@ -1,5 +1,12 @@
 import type { BusinessCardInput } from "./types";
 
+function compactJapanese(value: string): string {
+  return value
+    .replace(/(?<=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])\s+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function parseCardText(text: string): Partial<BusinessCardInput> {
   const result: Partial<BusinessCardInput> = {};
   const normalizedText = text
@@ -38,17 +45,17 @@ export function parseCardText(text: string): Partial<BusinessCardInput> {
     const idx = normalizedText.indexOf(pat);
     if (idx !== -1) {
       const line = lines.find((item) => item.includes(pat));
-      if (line) result.company = line.replace(/^[|｜·•\s]+|[|｜·•\s]+$/g, "").trim();
+      if (line) result.company = compactJapanese(line.replace(/^[|｜·•\s]+|[|｜·•\s]+$/g, ""));
       break;
     }
   }
 
   // 部署・役職（部/課/室/局/代表/CEO/CFO等を含む行）
   const deptMatch = lines.find((line) => /(部|課|室|局|グループ|チーム|ディビジョン)/.test(line));
-  if (deptMatch) result.department = deptMatch.trim();
+  if (deptMatch) result.department = compactJapanese(deptMatch);
 
   const titleMatch = lines.find((line) => /(代表|取締役|部長|課長|所長|主任|担当|CEO|CFO|CTO|COO|Director|Manager|Executive)/i.test(line));
-  if (titleMatch) result.title = titleMatch.trim();
+  if (titleMatch) result.title = compactJapanese(titleMatch);
 
   if (!result.name) {
     const candidate = lines.find((line) =>
@@ -56,7 +63,7 @@ export function parseCardText(text: string): Partial<BusinessCardInput> {
       !/[0-9@:/]/.test(line) &&
       !/(株式会社|有限会社|合同会社|部|課|室|局|代表|取締役|部長|課長|TEL|FAX|〒|http)/i.test(line)
     );
-    if (candidate) result.name = candidate.replace(/[|｜·•]/g, "").trim();
+    if (candidate) result.name = compactJapanese(candidate.replace(/[|｜·•]/g, ""));
   }
 
   return result;
