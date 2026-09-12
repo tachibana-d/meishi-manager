@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { migrateLocalCards } from "@/lib/cloudStorage";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -10,7 +11,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
-    supabase.auth.getUser().then(({ data }) => { setLoggedIn(Boolean(data.user)); setLoading(false); });
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user) await migrateLocalCards().catch(() => undefined);
+      setLoggedIn(Boolean(data.user)); setLoading(false);
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setLoggedIn(Boolean(session?.user)));
     return () => listener.subscription.unsubscribe();
   }, []);

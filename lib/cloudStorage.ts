@@ -1,5 +1,6 @@
 import type { BusinessCard, BusinessCardInput } from "./types";
 import { supabase } from "./supabase";
+import { getCards } from "./storage";
 
 function requireClient() {
   if (!supabase) throw new Error("Supabaseの環境変数が設定されていません");
@@ -18,6 +19,20 @@ export async function getCloudCards(): Promise<BusinessCard[]> {
   const { data, error } = await client.from("business_cards").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => row.data as BusinessCard);
+}
+
+export async function migrateLocalCards() {
+  const client = requireClient();
+  const user = await getCurrentUser();
+  if (!user) return;
+  const localCards = getCards();
+  if (localCards.length === 0) return;
+  const { data: existing } = await client.from("business_cards").select("id");
+  const existingIds = new Set((existing ?? []).map((row) => row.id));
+  const pending = localCards
+    .filter((card) => !existingIds.has(card.id))
+    .map((card) => ({ id: card.id, user_id: user.id, data: card, created_at: card.createdAt, updated_at: card.updatedAt }));
+  if (pending.length > 0) await client.from("business_cards").insert(pending);
 }
 
 export async function getCloudCard(id: string): Promise<BusinessCard | null> {
