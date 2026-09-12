@@ -210,10 +210,17 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
     // クロップして出力
     const cx = Math.round(c.x * rw), cy = Math.round(c.y * rh);
     const cw = Math.round(c.w * rw), ch = Math.round(c.h * rh);
+    const maxOutputSize = 1600;
+    const outputScale = Math.min(1, maxOutputSize / Math.max(cw, ch));
     const out = document.createElement("canvas");
-    out.width = cw; out.height = ch;
-    out.getContext("2d")!.drawImage(tmp, cx, cy, cw, ch, 0, 0, cw, ch);
-    onConfirm(out.toDataURL("image/jpeg", 0.92));
+    out.width = Math.max(1, Math.round(cw * outputScale));
+    out.height = Math.max(1, Math.round(ch * outputScale));
+    const outputContext = out.getContext("2d")!;
+    outputContext.imageSmoothingEnabled = true;
+    outputContext.imageSmoothingQuality = "high";
+    outputContext.drawImage(tmp, cx, cy, cw, ch, 0, 0, out.width, out.height);
+    // localStorageの容量を圧迫しないよう、名刺画像は適度に圧縮して保存する。
+    onConfirm(out.toDataURL("image/jpeg", 0.82));
   }
 
   return (

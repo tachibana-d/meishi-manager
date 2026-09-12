@@ -30,7 +30,7 @@ export function parseCardText(text: string): Partial<BusinessCardInput> {
 
   // 住所（郵便番号またはTEL/FAXの前の行）
   const addrMatch = normalizedText.match(/〒?\s*\d{3}[-－\s]?\d{4}[^\n]*/);
-  if (addrMatch) result.address = addrMatch[0].trim();
+  if (addrMatch) result.address = addrMatch[0].replace(/\s+/g, "").trim();
 
   // 会社名
   const companyPatterns = ["株式会社", "有限会社", "合同会社", "一般社団法人", "公益社団法人", "LLC", "Inc", "Corp", "Co.,Ltd"];

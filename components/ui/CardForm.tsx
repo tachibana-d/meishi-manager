@@ -107,6 +107,8 @@ export default function CardForm({ initialData }: CardFormProps) {
   const [errors, setErrors] = useState<Partial<Record<keyof BusinessCardInput, string>>>({});
   const [ocring, setOcring] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const allTags = getAllTags();
 
   function set<K extends keyof BusinessCardInput>(key: K, value: BusinessCardInput[K]) {
@@ -157,13 +159,26 @@ export default function CardForm({ initialData }: CardFormProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
-    if (initialData) {
-      updateCard(initialData.id, form);
-      router.push(`/cards/${initialData.id}`);
-    } else {
-      const card = saveCard(form);
-      router.push(`/cards/${card.id}`);
+    if (saving || !validate()) return;
+    setSaveError(null);
+    setSaving(true);
+    try {
+      if (initialData) {
+        const updated = updateCard(initialData.id, form);
+        if (!updated) throw new Error("更新対象の名刺が見つかりません");
+        router.push(`/cards/${initialData.id}`);
+      } else {
+        const card = saveCard(form);
+        router.push(`/cards/${card.id}`);
+      }
+    } catch (error) {
+      console.error("名刺の保存に失敗しました", error);
+      const isQuotaError = error instanceof DOMException && error.name === "QuotaExceededError";
+      setSaveError(isQuotaError
+        ? "保存容量を超えています。画像を小さくするか、不要な名刺画像を削除してください。"
+        : "保存に失敗しました。入力内容を確認して、もう一度お試しください。"
+      );
+      setSaving(false);
     }
   }
 
@@ -323,6 +338,11 @@ export default function CardForm({ initialData }: CardFormProps) {
       </section>
 
       {/* ボタン */}
+      {saveError && (
+        <p role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+          {saveError}
+        </p>
+      )}
       <div className="flex gap-3 justify-end pb-8">
         <button
           type="button"
@@ -333,9 +353,10 @@ export default function CardForm({ initialData }: CardFormProps) {
         </button>
         <button
           type="submit"
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+          disabled={saving}
+          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
         >
-          {initialData ? "更新する" : "保存する"}
+          {saving ? "保存中..." : initialData ? "更新する" : "保存する"}
         </button>
       </div>
     </form>
