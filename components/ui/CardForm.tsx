@@ -9,6 +9,37 @@ import { parseCardText } from "@/lib/parseCardText";
 import TagInput from "./TagInput";
 import PhotoUpload from "./PhotoUpload";
 
+function preprocessForOcr(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(3, Math.max(2, 1800 / Math.max(image.width, image.height)));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return reject(new Error("画像処理に失敗しました"));
+
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < pixels.data.length; i += 4) {
+        const gray = 0.299 * pixels.data[i] + 0.587 * pixels.data[i + 1] + 0.114 * pixels.data[i + 2];
+        const contrast = Math.max(0, Math.min(255, (gray - 128) * 1.45 + 128));
+        const value = contrast > 178 ? 255 : contrast < 92 ? 0 : contrast;
+        pixels.data[i] = value;
+        pixels.data[i + 1] = value;
+        pixels.data[i + 2] = value;
+      }
+      context.putImageData(pixels, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = () => reject(new Error("画像を読み込めませんでした"));
+    image.src = dataUrl;
+  });
+}
+
 interface CardFormProps {
   initialData?: BusinessCard;
 }
@@ -90,8 +121,11 @@ export default function CardForm({ initialData }: CardFormProps) {
     try {
       const { createWorker } = await import("tesseract.js");
       const worker = await createWorker(["jpn", "eng"]);
-      const { data: { text } } = await worker.recognize(form.cardImage);
+      const enhancedImage = await preprocessForOcr(form.cardImage);
+      const original = await worker.recognize(form.cardImage);
+      const enhanced = await worker.recognize(enhancedImage);
       await worker.terminate();
+      const text = `${original.data.text}\n${enhanced.data.text}`;
       const parsed = parseCardText(text);
       setForm((prev) => ({
         ...prev,
