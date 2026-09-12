@@ -70,6 +70,7 @@ interface Props {
 
 export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
   const [rotation, setRotation] = useState(0);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const imgEl = useRef<HTMLImageElement | null>(null);
   const imgCanvasRef = useRef<HTMLCanvasElement>(null);   // 画像描画用
   const ovCanvasRef = useRef<HTMLCanvasElement>(null);    // クロップUI描画用
@@ -240,37 +241,48 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
   }
 
   function confirm() {
-    const img = imgEl.current;
-    if (!img) return;
-    const c = cropRef.current;
-    const is90 = rotation === 90 || rotation === 270;
-    const rw = is90 ? img.naturalHeight : img.naturalWidth;
-    const rh = is90 ? img.naturalWidth : img.naturalHeight;
+    try {
+      const img = imgEl.current;
+      if (!img || !img.complete || !img.naturalWidth) {
+        throw new Error("画像の読み込みが完了していません");
+      }
+      const c = cropRef.current;
+      if (![c.x, c.y, c.w, c.h].every(Number.isFinite) || c.w <= 0 || c.h <= 0) {
+        throw new Error("トリミング範囲が不正です");
+      }
+      const is90 = rotation === 90 || rotation === 270;
+      const rw = is90 ? img.naturalHeight : img.naturalWidth;
+      const rh = is90 ? img.naturalWidth : img.naturalHeight;
 
     // 回転済みの画像を一時canvasに描画
-    const tmp = document.createElement("canvas");
-    tmp.width = rw; tmp.height = rh;
-    const tc = tmp.getContext("2d")!;
-    tc.save();
-    tc.translate(rw / 2, rh / 2);
-    tc.rotate((rotation * Math.PI) / 180);
-    tc.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-    tc.restore();
+      const tmp = document.createElement("canvas");
+      tmp.width = rw; tmp.height = rh;
+      const tc = tmp.getContext("2d");
+      if (!tc) throw new Error("画像変換に失敗しました");
+      tc.save();
+      tc.translate(rw / 2, rh / 2);
+      tc.rotate((rotation * Math.PI) / 180);
+      tc.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+      tc.restore();
 
     // クロップして出力
-    const cx = Math.round(c.x * rw), cy = Math.round(c.y * rh);
-    const cw = Math.round(c.w * rw), ch = Math.round(c.h * rh);
-    const maxOutputSize = 1600;
-    const outputScale = Math.min(1, maxOutputSize / Math.max(cw, ch));
-    const out = document.createElement("canvas");
-    out.width = Math.max(1, Math.round(cw * outputScale));
-    out.height = Math.max(1, Math.round(ch * outputScale));
-    const outputContext = out.getContext("2d")!;
-    outputContext.imageSmoothingEnabled = true;
-    outputContext.imageSmoothingQuality = "high";
-    outputContext.drawImage(tmp, cx, cy, cw, ch, 0, 0, out.width, out.height);
-    // localStorageの容量を圧迫しないよう、名刺画像は適度に圧縮して保存する。
-    onConfirm(out.toDataURL("image/jpeg", 0.82));
+      const cx = Math.round(c.x * rw), cy = Math.round(c.y * rh);
+      const cw = Math.max(1, Math.round(c.w * rw)), ch = Math.max(1, Math.round(c.h * rh));
+      const maxOutputSize = 1600;
+      const outputScale = Math.min(1, maxOutputSize / Math.max(cw, ch));
+      const out = document.createElement("canvas");
+      out.width = Math.max(1, Math.round(cw * outputScale));
+      out.height = Math.max(1, Math.round(ch * outputScale));
+      const outputContext = out.getContext("2d");
+      if (!outputContext) throw new Error("画像変換に失敗しました");
+      outputContext.imageSmoothingEnabled = true;
+      outputContext.imageSmoothingQuality = "high";
+      outputContext.drawImage(tmp, cx, cy, cw, ch, 0, 0, out.width, out.height);
+      setConfirmError(null);
+      onConfirm(out.toDataURL("image/jpeg", 0.82));
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : "画像の確定に失敗しました");
+    }
   }
 
   return (
@@ -303,7 +315,7 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
         </div>
 
         {/* コントロール */}
-        <div className="p-4 space-y-3">
+        <div className="relative z-10 p-4 space-y-3">
           <div className="flex flex-wrap gap-3 items-center">
             <span className="text-sm font-medium text-slate-600 shrink-0">回転</span>
             <div className="flex gap-2">
@@ -330,10 +342,11 @@ export default function ImageEditor({ src, onConfirm, onCancel }: Props) {
             <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
               キャンセル
             </button>
-            <button type="button" onClick={confirm} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+            <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); confirm(); }} className="relative z-20 flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm">
               確定
             </button>
           </div>
+          {confirmError && <p role="alert" className="text-center text-xs text-red-500">{confirmError}</p>}
         </div>
       </div>
     </div>
