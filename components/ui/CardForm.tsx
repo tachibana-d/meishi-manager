@@ -130,13 +130,29 @@ export default function CardForm({ initialData }: CardFormProps) {
       await worker.terminate();
       const text = `${original.data.text}\n${enhanced.data.text}`;
       const parsed = parseCardText(text);
+      // 連絡先は従来のローカルOCR結果を維持し、基本情報だけGeminiで再判定する。
+      let aiBasic: Partial<BusinessCardInput> = {};
+      try {
+        const response = await fetch("/api/ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: form.cardImage }),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          aiBasic = result.data ?? {};
+        }
+      } catch {
+        // APIが利用できない場合は、ローカルOCR結果を使用する。
+      }
+
       setForm((prev) => ({
         ...prev,
-        name: parsed.name ?? prev.name,
-        nameKana: parsed.nameKana ?? prev.nameKana,
-        company: parsed.company ?? prev.company,
-        department: parsed.department ?? prev.department,
-        title: parsed.title ?? prev.title,
+        name: aiBasic.name || parsed.name || prev.name,
+        nameKana: aiBasic.nameKana || parsed.nameKana || prev.nameKana,
+        company: aiBasic.company || parsed.company || prev.company,
+        department: aiBasic.department || parsed.department || prev.department,
+        title: aiBasic.title || parsed.title || prev.title,
         email: parsed.email ?? prev.email,
         phone: parsed.phone ?? prev.phone,
         mobile: parsed.mobile ?? prev.mobile,

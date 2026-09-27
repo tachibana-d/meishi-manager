@@ -11,7 +11,16 @@ export async function POST(req: NextRequest) {
     const mimeType = image.slice(5, semiIdx);
     const data = image.slice(semiIdx + 8).replace(/\s/g, "");
 
-    const prompt = `この名刺画像から情報を読み取り、以下のJSON形式で返してください。存在しない情報はnullにしてください。JSONのみを返し、説明文は不要です。
+    const prompt = `あなたは日本語の名刺を読み取る専門OCRです。画像を拡大して文字の形と名刺上の配置を確認し、以下のJSON形式だけを返してください。説明文やMarkdownは不要です。
+
+基本情報は特に厳密に判定してください。
+- 氏名は個人名だけ。会社名・部署名・役職・肩書き・ラベル（氏名、代表取締役など）は絶対に含めない。
+- 会社名は法人名全体（株式会社、合同会社などの法人格を含む）。名刺に書かれた正式表記をそのまま使う。
+- 部署は部署・課・室・局・本部などだけ。役職を混ぜない。
+- 役職は代表取締役、部長、CEOなどだけ。氏名や部署を混ぜない。
+- ふりがなは氏名の読みだけ。読み取れない場合はnull。
+- 画像にない情報を推測・補完しない。文字が不鮮明な場合はnull。
+- 日本語の空白や記号は、意味が変わらない範囲で整える。
 
 {
   "name": "氏名（漢字）",
@@ -28,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
